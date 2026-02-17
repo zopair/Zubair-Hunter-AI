@@ -1,0 +1,11 @@
+version: '3.9'
+services:
+  clt_core:
+    container_name: clt_sovereign_core
+    build: .
+    networks:
+      - clt_secure
+networks:
+  clt_secure:
+    driver: bridge
+    internal: true

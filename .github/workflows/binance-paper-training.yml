@@ -1,5 +1,7 @@
 name: Binance Paper Training
 on:
+  push:
+    branches: ["feat/binance-paper-trading-lab"]
   workflow_dispatch:
   schedule:
     - cron: '*/15 * * * *'

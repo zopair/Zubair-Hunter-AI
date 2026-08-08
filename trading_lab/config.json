@@ -1,0 +1,44 @@
+{
+  "research_mode": "paper_only",
+  "starting_capital": 5.0,
+  "spot": {
+    "maker_fee": 0.001,
+    "taker_fee": 0.001,
+    "bnb_discount": 0.25,
+    "use_bnb": false
+  },
+  "usd_m_futures": {
+    "maker_fee": 0.0002,
+    "taker_fee": 0.0005,
+    "bnb_discount": 0.10,
+    "use_bnb": false,
+    "funding_rate_source": "live_when_available",
+    "funding_interval_hours": 8,
+    "maintenance_margin_rate": 0.005,
+    "leverage": 1.0
+  },
+  "execution": {
+    "spread_bps": 1.0,
+    "slippage_bps": 2.0,
+    "reject_if_cost_exceeds_expected_edge": true
+  },
+  "risk": {
+    "max_risk_per_trade": 0.10,
+    "daily_target": 0.20,
+    "daily_target_is_not_a_required_quota": true,
+    "never_force_trade_to_reach_target": true
+  },
+  "validation": {
+    "walk_forward": true,
+    "train_fraction": 0.60,
+    "validation_fraction": 0.20,
+    "test_fraction": 0.20,
+    "purge_bars": 5
+  },
+  "data": {
+    "symbols": ["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT"],
+    "intervals": ["1m", "5m"],
+    "source": "Binance public market data"
+  },
+  "note": "Fee schedules, discounts and product rules can change. The simulator must be refreshed from Binance's current fee/account schedule before production use."
+}

@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Binance Paper Trading Lab</title>
+<style>
+body{font-family:system-ui;background:#0b1020;color:#eef2ff;margin:0}main{max-width:1200px;margin:auto;padding:24px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}.card{background:#151c31;border:1px solid #293452;border-radius:14px;padding:16px}.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}button,select,input{background:#0e1528;color:#fff;border:1px solid #39486d;border-radius:8px;padding:9px}button{cursor:pointer}.good{color:#62e6a6}.bad{color:#ff7186}table{width:100%;border-collapse:collapse}td,th{padding:8px;border-bottom:1px solid #293452;text-align:left}.muted{color:#9ca9c7}pre{white-space:pre-wrap}
+</style></head>
+<body><main>
+<h1>Binance Paper Trading Lab</h1>
+<p class="muted">Live public Binance market data + virtual capital. No private keys and no real orders.</p>
+<div class="row"><select id="symbol"><option>BTCUSDT</option><option>ETHUSDT</option><option>BNBUSDT</option><option>SOLUSDT</option><option>XRPUSDT</option><option>DOGEUSDT</option><option>ADAUSDT</option><option>AVAXUSDT</option><option>LINKUSDT</option><option>SUIUSDT</option></select><select id="interval"><option>1m</option><option>5m</option><option>15m</option></select><input id="capital" type="number" value="100" min="1" step="0.01"><button id="reset">Reset Paper Account</button><button id="refresh">Refresh</button></div>
+<div class="grid" style="margin-top:14px">
+<div class="card"><div class="muted">Price</div><h2 id="price">—</h2></div><div class="card"><div class="muted">24h Change</div><h2 id="change">—</h2></div><div class="card"><div class="muted">Virtual Equity</div><h2 id="equity">—</h2></div><div class="card"><div class="muted">Imbalance</div><h2 id="imbalance">—</h2></div>
+</div>
+<div class="grid" style="margin-top:14px">
+<div class="card"><h3>Market</h3><div id="market"></div></div><div class="card"><h3>Signal Engine</h3><div id="signal"></div></div><div class="card"><h3>Paper Position</h3><div id="position"></div><div class="row" style="margin-top:10px"><button id="buy">Paper Buy</button><button id="sell">Paper Sell</button><button id="close">Close</button></div></div>
+</div>
+<div class="card" style="margin-top:14px"><h3>Recent 1m candles</h3><table><thead><tr><th>Time</th><th>Open</th><th>High</th><th>Low</th><th>Close</th><th>Volume</th></tr></thead><tbody id="candles"></tbody></table></div>
+<div class="card" style="margin-top:14px"><h3>Training log</h3><pre id="log">Waiting for live data…</pre></div>
+</main>
+<script>
+const API='https://api.binance.com/api/v3';
+let account={cash:100,position:0,entry:0,realized:0,feeRate:0.001};
+const $=id=>document.getElementById(id);
+function load(){try{const x=JSON.parse(localStorage.getItem('paperAccount'));if(x)account=x}catch(e){}}
+function save(){localStorage.setItem('paperAccount',JSON.stringify(account))}
+async function get(path){const r=await fetch(API+path);if(!r.ok)throw Error(r.status);return r.json()}
+function candleFeatures(cs){let c=cs.at(-1),p=cs.at(-2);let range=Math.max(c.h-c.l,1e-12),body=Math.abs(c.c-c.o);let uw=c.h-Math.max(c.o,c.c),lw=Math.min(c.o,c.c)-c.l;let doji=body/range<.1,hammer=lw>2*Math.max(body,1e-12)&&uw<.75*Math.max(body,1e-12);let bullEng=p&&p.c<p.o&&c.c>c.o&&c.o<=p.c&&c.c>=p.o;let bearEng=p&&p.c>p.o&&c.c<c.o&&c.o>=p.c&&c.c<=p.o;return{range,body,doji,hammer,bullEng,bearEng,close:c.c}}
+async function refresh(){try{let s=$('symbol').value,i=$('interval').value;let [t,k,b]=await Promise.all([get('/ticker/24hr?symbol='+s),get('/klines?symbol='+s+'&interval='+i+'&limit=60'),get('/depth?symbol='+s+'&limit=20')]);let cs=k.map(x=>({t:x[0],o:+x[1],h:+x[2],l:+x[3],c:+x[4],v:+x[5]}));let f=candleFeatures(cs);let bids=b.bids.reduce((a,x)=>a+(+x[0]*+x[1]),0),asks=b.asks.reduce((a,x)=>a+(+x[0]*+x[1]),0);let imb=(bids-asks)/Math.max(bids+asks,1);let mom=(cs.at(-1).c-cs.at(-6).c)/cs.at(-6).c;let score=Math.max(0,Math.min(100,50+500*mom+35*imb+(f.bullEng||f.hammer?8:0)-(f.bearEng?8:0)));let last=cs.at(-1).c;let equity=account.cash+account.position*last; $('price').textContent=last.toLocaleString();$('change').textContent=(+t.priceChangePercent).toFixed(2)+'%';$('equity').textContent='$'+equity.toFixed(2);$('imbalance').textContent=(imb*100).toFixed(2)+'%';$('market').innerHTML=`Volume 24h: ${(+t.quoteVolume).toLocaleString()}<br>Bid depth: ${bids.toFixed(0)}<br>Ask depth: ${asks.toFixed(0)}<br>Momentum: ${(mom*100).toFixed(3)}%`;$('signal').innerHTML=`Score: <b>${score.toFixed(1)}</b><br>Doji: ${f.doji}<br>Hammer: ${f.hammer}<br>Bull engulfing: ${f.bullEng}<br>Bear engulfing: ${f.bearEng}<br><span class="muted">Score is research-only; it does not place real orders.</span>`;$('position').innerHTML=`Qty: ${account.position.toFixed(6)}<br>Entry: ${account.entry?account.entry.toFixed(4):'—'}<br>Realized P&L: $${account.realized.toFixed(4)}`;$('candles').innerHTML=cs.slice(-12).reverse().map(c=>`<tr><td>${new Date(c.t).toLocaleTimeString()}</td><td>${c.o}</td><td>${c.h}</td><td>${c.l}</td><td>${c.c}</td><td>${c.v.toFixed(2)}</td></tr>`).join('');$('log').textContent=`Live source: Binance public REST\nSymbol: ${s}\nInterval: ${i}\nUpdated: ${new Date().toISOString()}\nImbalance score: ${score.toFixed(2)}\nVirtual equity: $${equity.toFixed(2)}`;window.lastPrice=last}catch(e){$('log').textContent='Data error: '+e.message+' — retrying on next refresh'}}
+function trade(side){let p=window.lastPrice;if(!p)return;let notional=Math.min(account.cash,p*0.01);if(side==='buy'&&notional>0){let q=notional/p,fee=notional*account.feeRate;account.cash-=notional+fee;account.position+=q;account.entry=account.position?((account.entry*(account.position-q)+p*q)/account.position):p}if(side==='sell'&&account.position>0){let q=account.position,notional=q*p,fee=notional*account.feeRate;account.cash+=notional-fee;account.realized+=notional-fee-q*account.entry;account.position=0;account.entry=0}if(side==='close'&&account.position>0)trade('sell');save();refresh()}
+$('buy').onclick=()=>trade('buy');$('sell').onclick=()=>trade('sell');$('close').onclick=()=>trade('close');$('refresh').onclick=refresh;$('symbol').onchange=refresh;$('interval').onchange=refresh;$('reset').onclick=()=>{account={cash:+$('capital').value||100,position:0,entry:0,realized:0,feeRate:.001};save();refresh()};load();refresh();setInterval(refresh,5000);
+</script></body></html>

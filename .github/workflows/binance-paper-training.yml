@@ -1,0 +1,28 @@
+name: Binance Paper Training
+on:
+  push:
+    branches: ["feat/binance-paper-trading-lab"]
+  workflow_dispatch:
+  schedule:
+    - cron: '*/15 * * * *'
+permissions:
+  contents: write
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run realistic walk-forward paper training on real Binance public data
+        run: python trading_lab/train_realistic.py
+      - name: Run baseline compatibility backtest
+        run: python trading_lab/train.py
+      - name: Commit latest research snapshots
+        run: |
+          git config user.name 'binance-paper-bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add trading_lab/latest_backtest.json trading_lab/realistic_training_result.json
+          git diff --cached --quiet || git commit -m 'chore: update realistic Binance paper-training snapshot'
+          git push

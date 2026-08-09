@@ -1,0 +1,39 @@
+name: Binance Realistic Training v2
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 2 * * *'
+
+jobs:
+  train-paper:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install research dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyyaml pandas numpy
+      - name: Validate lab configuration
+        run: python - <<'PY'
+          from pathlib import Path
+          import yaml
+          cfg = yaml.safe_load(Path('trading_lab_v2/config.yaml').read_text())
+          assert cfg['safety']['live_orders'] is False
+          assert cfg['safety']['api_keys'] is False
+          assert cfg['account']['initial_cash'] == 5.0
+          assert cfg['risk']['max_risk_fraction_per_trade'] <= 0.10
+          print('configuration: OK')
+          PY
+      - name: Run deterministic unit checks
+        run: |
+          python -m py_compile trading_lab_v2/data_quality.py trading_lab_v2/objective.py
+      - name: Training placeholder guard
+        run: |
+          echo 'Full historical-data training is intentionally a separate step.'
+          echo 'It must download official Binance public data, verify checksums,'
+          echo 'quarantine bad intervals, then run the event-driven simulator.'

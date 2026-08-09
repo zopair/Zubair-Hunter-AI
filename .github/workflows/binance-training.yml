@@ -1,0 +1,24 @@
+name: Binance realistic paper training
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 2 * * *'
+
+jobs:
+  validate-and-train:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run safe readiness gate
+        run: python -m training_lab.run_training
+      - name: Upload report
+        uses: actions/upload-artifact@v4
+        with:
+          name: binance-training-report
+          path: training_report.json

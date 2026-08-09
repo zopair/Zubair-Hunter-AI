@@ -2,6 +2,8 @@ name: Binance realistic paper training
 
 on:
   workflow_dispatch:
+  push:
+    branches: [feature/binance-realistic-training-v2]
   schedule:
     - cron: '17 2 * * *'
 

@@ -1,0 +1,63 @@
+account:
+  initial_cash: 5.00
+  currency: USDT
+  mode: paper_only
+
+market:
+  venue: BINANCE
+  products: [spot, usd_m_futures]
+  timeframes: [1m, 5m, 15m]
+  symbols: [BTCUSDT, ETHUSDT, BNBUSDT, SOLUSDT, XRPUSDT, SUIUSDT]
+
+execution:
+  simulator: event_driven
+  order_types: [market, limit]
+  partial_fills: true
+  queue_position: true
+  latency_ms:
+    base: 50
+    jitter: 25
+  spread_model: observed_or_stressed
+  slippage_model: depth_consumption
+
+costs:
+  maker_fee_rate: 0.00075
+  taker_fee_rate: 0.00095
+  bnb_discount_enabled: false
+  funding_enabled: true
+  funding_model: historical_when_available
+  all_rates_are_overrides: true
+
+risk:
+  max_risk_fraction_per_trade: 0.10
+  max_leverage: 3
+  max_daily_drawdown_fraction: 0.20
+  max_open_positions: 2
+  reject_if_expected_net_pnl <= 0: true
+  daily_target_fraction: 0.20
+  daily_target_is_not_a_quota: true
+
+validation:
+  method: walk_forward
+  train_fraction: 0.60
+  validation_fraction: 0.20
+  test_fraction: 0.20
+  purge_bars: 30
+  embargo_bars: 30
+  minimum_trades_for_claim: 200
+
+features:
+  candlesticks: true
+  price_action: true
+  order_book_imbalance: true
+  taker_flow: true
+  open_interest: true
+  funding: true
+  volatility: true
+  relative_volume: true
+  cross_asset_context: true
+
+safety:
+  live_orders: false
+  api_keys: false
+  paper_account_only: true

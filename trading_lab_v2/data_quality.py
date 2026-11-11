@@ -1,10 +1,10 @@
 """Data-quality gates for Binance public datasets.
 
-Never silently train on malformed trade-side or timestamp data. Rows that fail
-validation are quarantined and the affected interval is marked unreliable.
+Malformed, non-finite, or semantically invalid values are counted and rejected.
+Rows that fail validation must be quarantined rather than silently trained on.
 """
-
 from dataclasses import dataclass
+import math
 
 
 @dataclass(frozen=True)
@@ -26,16 +26,42 @@ class QualityReport:
         )
 
 
-def validate_rows(rows: list[dict]) -> QualityReport:
-    bad_timestamps = sum(not isinstance(r.get("timestamp"), (int, float)) for r in rows)
-    bad_prices = sum(float(r.get("price", 0)) <= 0 for r in rows)
-    bad_quantities = sum(float(r.get("quantity", 0)) <= 0 for r in rows)
+def _finite_number(value: object) -> float | None:
+    """Return a finite numeric value; reject booleans and malformed inputs."""
+    if isinstance(value, bool) or value is None:
+        return None
+    try:
+        number = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    return number if math.isfinite(number) else None
 
-    sides = [r.get("is_buyer_maker") for r in rows if "is_buyer_maker" in r]
-    suspicious_side_ratio = False
-    if len(sides) >= 100:
-        true_ratio = sum(bool(x) for x in sides) / len(sides)
-        # A near-100% one-sided file is suspicious and requires inspection.
+
+def validate_rows(rows: list[dict]) -> QualityReport:
+    bad_timestamps = 0
+    bad_prices = 0
+    bad_quantities = 0
+
+    for row in rows:
+        timestamp = row.get("timestamp")
+        if isinstance(timestamp, bool) or not isinstance(timestamp, (int, float)):
+            bad_timestamps += 1
+        elif not math.isfinite(float(timestamp)):
+            bad_timestamps += 1
+
+        price = _finite_number(row.get("price"))
+        if price is None or price <= 0:
+            bad_prices += 1
+
+        quantity = _finite_number(row.get("quantity"))
+        if quantity is None or quantity <= 0:
+            bad_quantities += 1
+
+    sides = [row["is_buyer_maker"] for row in rows if "is_buyer_maker" in row]
+    invalid_side_values = any(not isinstance(side, bool) for side in sides)
+    suspicious_side_ratio = invalid_side_values
+    if len(sides) >= 100 and not invalid_side_values:
+        true_ratio = sum(sides) / len(sides)
         suspicious_side_ratio = true_ratio >= 0.999 or true_ratio <= 0.001
 
     return QualityReport(

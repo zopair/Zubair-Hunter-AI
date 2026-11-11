@@ -1,9 +1,20 @@
 name: Binance Realistic Training v2
 
 on:
+  push:
+    branches: [main, fix/trading-lab-data-quality]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
   schedule:
     - cron: '17 2 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: binance-paper-lab-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   train-paper:
@@ -19,7 +30,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install pyyaml pandas numpy
       - name: Validate lab configuration
-        run: python - <<'PY'
+        run: |
+          python - <<'PY'
           from pathlib import Path
           import yaml
           cfg = yaml.safe_load(Path('trading_lab_v2/config.yaml').read_text())
@@ -29,11 +41,11 @@ jobs:
           assert cfg['risk']['max_risk_fraction_per_trade'] <= 0.10
           print('configuration: OK')
           PY
-      - name: Run deterministic unit checks
+      - name: Compile research modules
+        run: python -m py_compile trading_lab_v2/data_quality.py trading_lab_v2/objective.py
+      - name: Run deterministic unit tests
+        run: python -m unittest discover -s tests -v
+      - name: Training boundary
         run: |
-          python -m py_compile trading_lab_v2/data_quality.py trading_lab_v2/objective.py
-      - name: Training placeholder guard
-        run: |
-          echo 'Full historical-data training is intentionally a separate step.'
-          echo 'It must download official Binance public data, verify checksums,'
-          echo 'quarantine bad intervals, then run the event-driven simulator.'
+          echo 'Full historical-data training is intentionally not enabled by this workflow.'
+          echo 'No live orders, credentials, or real funds are used.'

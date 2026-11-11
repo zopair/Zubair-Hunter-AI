@@ -1,0 +1,20 @@
+# Local runtime and cloud CLI state
+.config/
+.env
+.env.*
+!.env.example
+
+# Python runtime artifacts
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# Local logs and temporary files
+*.log
+*.tmp
+
+# Generated local databases are not source artifacts.
+# Existing tracked databases are retained pending data classification.
+*.db

@@ -1,6 +1,10 @@
 name: Binance Realistic Training v2
 
 on:
+  push:
+    branches: [main, fix/trading-lab-data-quality]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
   schedule:
     - cron: '17 2 * * *'
